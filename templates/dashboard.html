@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header animate-fade-up">
+    <div>
+        <h1 class="page-title">Financial Intelligence</h1>
+        <p class="text-secondary">Medallion Data Pipeline &middot; Synced {{ kpis.updated_at[:16].replace('T', ' ') if kpis else 'N/A' }} UTC</p>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi-card glass-panel animate-fade-up delay-1">
+        <span class="kpi-title">Total Balance</span>
+        <span class="kpi-value text-accent">${{ "{:,.2f}".format(kpis.balance_neto) if kpis else '0.00' }}</span>
+    </div>
+    
+    <div class="kpi-card glass-panel animate-fade-up delay-1">
+        <span class="kpi-title">Total Income</span>
+        <span class="kpi-value">${{ "{:,.2f}".format(kpis.ingresos_totales) if kpis else '0.00' }}</span>
+    </div>
+
+    <div class="kpi-card glass-panel animate-fade-up delay-2">
+        <span class="kpi-title">Total Expenses</span>
+        <span class="kpi-value text-danger">${{ "{:,.2f}".format(kpis.egresos_totales) if kpis else '0.00' }}</span>
+    </div>
+
+    <div class="kpi-card glass-panel animate-fade-up delay-2">
+        <span class="kpi-title">Transactions Processed</span>
+        <span class="kpi-value">{{ "{:,}".format(kpis.total_transacciones) if kpis else '0' }}</span>
+    </div>
+</div>
+
+<div class="table-container glass-panel animate-fade-up delay-3">
+    <div class="table-header">
+        <h3>Expense Categorization</h3>
+        <p class="text-secondary" style="font-size: var(--text-sm);">Drilldown by operational buckets</p>
+    </div>
+    
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th style="text-align: right;">Transactions</th>
+                <th style="text-align: right;">Total Egress</th>
+                <th style="text-align: right;">Total Income</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cat in categories %}
+            <tr>
+                <td class="font-medium">{{ cat.categoria }}</td>
+                <td style="text-align: right;">{{ cat.num_transacciones }}</td>
+                <td style="text-align: right;" class="text-danger font-medium">${{ "{:,.2f}".format(cat.total_egresos) }}</td>
+                <td style="text-align: right;">${{ "{:,.2f}".format(cat.total_ingresos) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align: center; padding: var(--space-xl);">No data available. Run the pipeline first.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

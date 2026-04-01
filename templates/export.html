@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Export Data{% endblock %}
+
+{% block content %}
+<style>
+    /* Local overrides for export page */
+    .export-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: var(--space-2xl);
+        align-items: start;
+    }
+
+    .export-form-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+    }
+
+    .form-card {
+        padding: var(--space-xl);
+    }
+
+    .form-card h3 {
+        margin-bottom: var(--space-lg);
+        font-size: var(--text-lg);
+    }
+
+    .option-grid {
+        display: grid;
+        gap: var(--space-sm);
+    }
+
+    /* Radio-card style selector */
+    .option-card {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        padding: var(--space-md) var(--space-lg);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-border-light);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: transparent;
+    }
+
+    .option-card:hover {
+        background: var(--color-glass-layer);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    input[type="radio"] {
+        display: none;
+    }
+
+    input[type="radio"]:checked+.option-card {
+        background: rgba(166, 255, 157, 0.08);
+        border-color: var(--color-accent);
+    }
+
+    input[type="radio"]:checked+.option-card .option-indicator {
+        background: var(--color-accent);
+        box-shadow: 0 0 10px rgba(166, 255, 157, 0.5);
+    }
+
+    input[type="radio"]:checked+.option-card .option-label {
+        color: var(--color-text-primary);
+    }
+
+    .option-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+    }
+
+    .option-label {
+        color: var(--color-text-secondary);
+        font-size: var(--text-sm);
+        font-weight: var(--font-medium);
+        transition: color 0.2s;
+    }
+
+    .option-badge {
+        margin-left: auto;
+        font-size: var(--text-xs);
+        color: var(--color-text-secondary);
+        background: var(--color-glass-layer);
+        padding: 2px 8px;
+        border-radius: var(--radius-full);
+        border: 1px solid var(--color-border-light);
+    }
+
+    .download-btn {
+        width: 100%;
+        padding: var(--space-md) var(--space-lg);
+        font-size: var(--text-md);
+        border-radius: var(--radius-md);
+        font-weight: var(--font-semibold);
+        margin-top: var(--space-md);
+    }
+
+    /* Preview sidebar */
+    .preview-card {
+        padding: var(--space-xl);
+        position: sticky;
+        top: 100px;
+    }
+
+    .preview-card h3 {
+        margin-bottom: var(--space-lg);
+        font-size: var(--text-lg);
+    }
+
+    .preview-stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-sm) 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .preview-stat:last-of-type {
+        border-bottom: none;
+    }
+
+    .preview-stat-label {
+        font-size: var(--text-sm);
+        color: var(--color-text-secondary);
+    }
+
+    .preview-stat-value {
+        font-size: var(--text-sm);
+        font-weight: var(--font-medium);
+    }
+
+    .format-icon {
+        font-size: 1.25rem;
+    }
+
+    .divider {
+        border: none;
+        border-top: 1px solid var(--color-border-light);
+        margin: var(--space-md) 0;
+    }
+
+    @media (max-width: 900px) {
+        .export-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .preview-card {
+            position: static;
+        }
+    }
+</style>
+
+<div class="page-header animate-fade-up">
+    <div>
+        <h1>Export Report</h1>
+        <p class="text-secondary">Selecciona el período y formato para el análisis</p>
+    </div>
+    <a href="/" class="btn btn-glass">← Back to Dashboard</a>
+</div>
+
+<form action="/export/download" method="get" id="export-form">
+    <div class="export-layout animate-fade-up delay-1">
+
+        <!-- LEFT: Options -->
+        <div class="export-form-section">
+
+            <!-- Period selector -->
+            <div class="form-card glass-panel">
+                <h3>Período</h3>
+                <div class="option-grid">
+
+                    <label>
+                        <input type="radio" name="semester" value="S1_2025" id="sem_s1">
+                        <div class="option-card">
+                            <span class="option-indicator"></span>
+                            <span class="option-label">Semestre 1 — 2025</span>
+                            <span class="option-badge">Ene – Jun</span>
+                        </div>
+                    </label>
+
+                    <label>
+                        <input type="radio" name="semester" value="S2_2025" id="sem_s2">
+                        <div class="option-card">
+                            <span class="option-indicator"></span>
+                            <span class="option-label">Semestre 2 — 2025</span>
+                            <span class="option-badge">Jul – Dic</span>
+                        </div>
+                    </label>
+
+                    <label>
+                        <input type="radio" name="semester" value="all" id="sem_all" checked>
+                        <div class="option-card">
+                            <span class="option-indicator"></span>
+                            <span class="option-label">Año completo 2025</span>
+                            <span class="option-badge">Q1 – Q4</span>
+                        </div>
+                    </label>
+
+                </div>
+            </div>
+
+            <!-- Format selector -->
+            <div class="form-card glass-panel">
+                <h3>Formato de exportación</h3>
+                <div class="option-grid">
+
+                    <label>
+                        <input type="radio" name="fmt" value="csv" id="fmt_csv" checked>
+                        <div class="option-card">
+                            <span class="option-indicator"></span>
+                            <span class="format-icon">📄</span>
+                            <div>
+                                <div class="option-label">CSV — Comma Separated Values</div>
+                                <div
+                                    style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 2px;">
+                                    Compatible con Excel, Google Sheets, Power BI, Python</div>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label>
+                        <input type="radio" name="fmt" value="xlsx" id="fmt_xlsx">
+                        <div class="option-card">
+                            <span class="option-indicator"></span>
+                            <span class="format-icon">🗂️</span>
+                            <div>
+                                <div class="option-label">XLSX — Excel Workbook</div>
+                                <div
+                                    style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 2px;">
+                                    Listo para abrir en Microsoft Excel con formato nativo</div>
+                            </div>
+                        </div>
+                    </label>
+
+                    <label>
+                        <input type="radio" name="fmt" value="sql" id="fmt_sql">
+                        <div class="option-card">
+                            <span class="option-indicator"></span>
+                            <span class="format-icon">🗄️</span>
+                            <div>
+                                <div class="option-label">SQL — Script de inserción</div>
+                                <div
+                                    style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 2px;">
+                                    CREATE TABLE + INSERT INTO. Compatible con PostgreSQL, MySQL</div>
+                            </div>
+                        </div>
+                    </label>
+
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary download-btn" id="download-btn">
+                ↓ &nbsp; Descargar reporte
+            </button>
+
+        </div>
+
+        <!-- RIGHT: Preview summary -->
+        <div class="preview-card glass-panel animate-fade-up delay-2">
+            <h3>Resumen del dataset</h3>
+
+            <div class="preview-stat">
+                <span class="preview-stat-label">Año</span>
+                <span class="preview-stat-value">2025</span>
+            </div>
+            <div class="preview-stat">
+                <span class="preview-stat-label">Total transacciones</span>
+                <span class="preview-stat-value text-accent">{{ "{:,}".format(kpis.total_transacciones) if kpis else '—'
+                    }}</span>
+            </div>
+            <div class="preview-stat">
+                <span class="preview-stat-label">Ingresos totales</span>
+                <span class="preview-stat-value">${{ "{:,.0f}".format(kpis.ingresos_totales) if kpis else '—' }}</span>
+            </div>
+            <div class="preview-stat">
+                <span class="preview-stat-label">Egresos totales</span>
+                <span class="preview-stat-value text-danger">${{ "{:,.0f}".format(kpis.egresos_totales) if kpis else '—'
+                    }}</span>
+            </div>
+            <div class="preview-stat">
+                <span class="preview-stat-label">Balance neto</span>
+                <span class="preview-stat-value">${{ "{:,.0f}".format(kpis.balance_neto) if kpis else '—' }}</span>
+            </div>
+            <div class="preview-stat">
+                <span class="preview-stat-label">Período</span>
+                <span class="preview-stat-value" id="preview-period">Año completo</span>
+            </div>
+            <div class="preview-stat">
+                <span class="preview-stat-label">Formato</span>
+                <span class="preview-stat-value" id="preview-fmt">CSV</span>
+            </div>
+
+            <hr class="divider">
+
+            <p style="font-size: var(--text-xs); color: var(--color-text-secondary); line-height: 1.6;">
+                Los datos exportados provienen de la capa <strong>Silver</strong> del pipeline Medallion,
+                con limpieza, tipado y deduplicación aplicados. Listos para análisis o migración directa.
+            </p>
+        </div>
+
+    </div>
+</form>
+
+<script>
+    const periodLabels = {
+        S1_2025: "Semestre 1 (Ene–Jun)",
+        S2_2025: "Semestre 2 (Jul–Dic)",
+        all: "Año completo 2025"
+    };
+    const fmtLabels = { csv: "CSV", xlsx: "XLSX", sql: "SQL" };
+
+    function updatePreview() {
+        const sem = document.querySelector('input[name="semester"]:checked')?.value ?? "all";
+        const fmt = document.querySelector('input[name="fmt"]:checked')?.value ?? "csv";
+        document.getElementById("preview-period").textContent = periodLabels[sem] ?? sem;
+        document.getElementById("preview-fmt").textContent = fmtLabels[fmt] ?? fmt;
+    }
+
+    document.querySelectorAll('input[name="semester"], input[name="fmt"]')
+        .forEach(el => el.addEventListener("change", updatePreview));
+
+    // Button feedback on click
+    document.getElementById("export-form").addEventListener("submit", () => {
+        const btn = document.getElementById("download-btn");
+        btn.textContent = "Preparando descarga…";
+        btn.style.opacity = "0.7";
+        setTimeout(() => {
+            btn.textContent = "↓   Descargar reporte";
+            btn.style.opacity = "1";
+        }, 3000);
+    });
+
+    updatePreview();
+</script>
+{% endblock %}
