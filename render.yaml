@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: finreport-hub
+    runtime: python
+    buildCommand: pip install uv && uv sync && bash build.sh
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DB_URL
+        value: sqlite:///data/warehouse.db
+    healthCheckPath: /
+```
+
+---
+
+## 4. Configurar en el dashboard de Render
+
+Si preferís hacerlo manual desde el dashboard:
+
+| Campo | Valor |
+|---|---|
+| **Runtime** | Python 3 |
+| **Build Command** | `pip install uv && uv sync && bash build.sh` |
+| **Start Command** | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| **Instance Type** | Free (para demo) |
+
+En la sección **Environment Variables** agrega:
+
+| Variable | Valor |
+|---|---|
+| `DB_URL` | `sqlite:///data/warehouse.db` |
+| `PYTHON_VERSION` | `3.12.0` |
+
+---
+
+## 5. Problema conocido: `PORT` en uvicorn
+
+Render inyecta el puerto via `$PORT`. Tu start command ya lo maneja con `--port $PORT`. No uses el puerto hardcodeado `8000` o `8001` que aparece en tus logs locales.
+
+---
+
+## 6. Verificar que `pyproject.toml` tiene todo lo necesario
+
+Tu `pyproject.toml` ya tiene las dependencias correctas. Solo asegúrate de que `uv.lock` esté commiteado (ya lo está según los archivos compartidos). Render usará `uv sync` que respeta el lockfile exacto.
+
+---
+
+## 7. Flujo completo de lo que ocurre en Render
+```
+git push
+    ↓
+Render detecta cambio
+    ↓
+pip install uv → uv sync (instala dependencias del lockfile)
+    ↓
+bash build.sh:
+  ├── mkdir data/raw data/lake/...
+  ├── python data.py          → genera 4 XLSX trimestrales (~700 filas c/u)
+  ├── mv transacciones_*.xlsx data/raw/
+  └── python main.py          → Bronze → Silver → Gold → SQLite
+    ↓
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    ↓
+App disponible en https://finreport-hub.onrender.com

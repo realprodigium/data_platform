@@ -1,341 +1,271 @@
 {% extends "base.html" %}
-
-{% block title %}Export Data{% endblock %}
+{% block title %}Export{% endblock %}
 
 {% block content %}
 <style>
-    /* Local overrides for export page */
-    .export-layout {
+    .export-grid {
         display: grid;
-        grid-template-columns: 1fr 380px;
-        gap: var(--space-2xl);
+        grid-template-columns: 1fr 280px;
+        gap: var(--s5);
         align-items: start;
     }
 
-    .export-form-section {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-lg);
+    .export-section { display: flex; flex-direction: column; gap: var(--s4); }
+
+    .section-label {
+        font-family: var(--ff-mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.10em;
+        color: var(--text-40);
+        margin-bottom: var(--s2);
     }
 
-    .form-card {
-        padding: var(--space-xl);
-    }
-
-    .form-card h3 {
-        margin-bottom: var(--space-lg);
-        font-size: var(--text-lg);
-    }
-
-    .option-grid {
-        display: grid;
-        gap: var(--space-sm);
-    }
-
-    /* Radio-card style selector */
-    .option-card {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-        padding: var(--space-md) var(--space-lg);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--color-border-light);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        background: transparent;
-    }
-
-    .option-card:hover {
-        background: var(--color-glass-layer);
-        border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    input[type="radio"] {
-        display: none;
-    }
-
-    input[type="radio"]:checked+.option-card {
-        background: rgba(166, 255, 157, 0.08);
-        border-color: var(--color-accent);
-    }
-
-    input[type="radio"]:checked+.option-card .option-indicator {
-        background: var(--color-accent);
-        box-shadow: 0 0 10px rgba(166, 255, 157, 0.5);
-    }
-
-    input[type="radio"]:checked+.option-card .option-label {
-        color: var(--color-text-primary);
-    }
-
-    .option-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
-        flex-shrink: 0;
-        transition: all 0.2s ease;
-    }
-
-    .option-label {
-        color: var(--color-text-secondary);
-        font-size: var(--text-sm);
-        font-weight: var(--font-medium);
-        transition: color 0.2s;
-    }
-
-    .option-badge {
-        margin-left: auto;
-        font-size: var(--text-xs);
-        color: var(--color-text-secondary);
-        background: var(--color-glass-layer);
-        padding: 2px 8px;
-        border-radius: var(--radius-full);
-        border: 1px solid var(--color-border-light);
-    }
-
-    .download-btn {
+    /* Download button */
+    .btn-download {
         width: 100%;
-        padding: var(--space-md) var(--space-lg);
-        font-size: var(--text-md);
-        border-radius: var(--radius-md);
-        font-weight: var(--font-semibold);
-        margin-top: var(--space-md);
+        justify-content: center;
+        padding: var(--s3) var(--s4);
+        font-size: 12px;
+        letter-spacing: 0.10em;
+        border-radius: var(--r-sm);
     }
 
     /* Preview sidebar */
-    .preview-card {
-        padding: var(--space-xl);
+    .preview-panel {
         position: sticky;
-        top: 100px;
+        top: 80px;
     }
 
-    .preview-card h3 {
-        margin-bottom: var(--space-lg);
-        font-size: var(--text-lg);
+    .preview-note {
+        font-family: var(--ff-mono);
+        font-size: 10px;
+        line-height: 1.6;
+        color: var(--text-40);
+        margin-top: var(--s3);
     }
 
-    .preview-stat {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-sm) 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .preview-stat:last-of-type {
-        border-bottom: none;
-    }
-
-    .preview-stat-label {
-        font-size: var(--text-sm);
-        color: var(--color-text-secondary);
-    }
-
-    .preview-stat-value {
-        font-size: var(--text-sm);
-        font-weight: var(--font-medium);
-    }
-
-    .format-icon {
-        font-size: 1.25rem;
-    }
-
-    .divider {
-        border: none;
-        border-top: 1px solid var(--color-border-light);
-        margin: var(--space-md) 0;
-    }
-
-    @media (max-width: 900px) {
-        .export-layout {
-            grid-template-columns: 1fr;
-        }
-
-        .preview-card {
-            position: static;
-        }
+    @media (max-width: 860px) {
+        .export-grid { grid-template-columns: 1fr; }
+        .preview-panel { position: static; }
     }
 </style>
 
-<div class="page-header animate-fade-up">
+{# ── Page header ── #}
+<div class="page-header animate-in">
     <div>
-        <h1>Export Report</h1>
-        <p class="text-secondary">Selecciona el período y formato para el análisis</p>
+        <h1 class="page-title">Export Report</h1>
+        <p class="t-meta" style="margin-top: 4px;">Silver layer · limpieza aplicada · listo para análisis</p>
     </div>
-    <a href="/" class="btn btn-glass">← Back to Dashboard</a>
+    <a href="/" class="btn btn-ghost">← Dashboard</a>
 </div>
 
 <form action="/export/download" method="get" id="export-form">
-    <div class="export-layout animate-fade-up delay-1">
+<div class="export-grid animate-in delay-1">
 
-        <!-- LEFT: Options -->
-        <div class="export-form-section">
+    {# ── LEFT: selectors ── #}
+    <div class="export-section">
 
-            <!-- Period selector -->
-            <div class="form-card glass-panel">
-                <h3>Período</h3>
-                <div class="option-grid">
-
-                    <label>
-                        <input type="radio" name="semester" value="S1_2025" id="sem_s1">
-                        <div class="option-card">
-                            <span class="option-indicator"></span>
-                            <span class="option-label">Semestre 1 — 2025</span>
-                            <span class="option-badge">Ene – Jun</span>
-                        </div>
-                    </label>
-
-                    <label>
-                        <input type="radio" name="semester" value="S2_2025" id="sem_s2">
-                        <div class="option-card">
-                            <span class="option-indicator"></span>
-                            <span class="option-label">Semestre 2 — 2025</span>
-                            <span class="option-badge">Jul – Dic</span>
-                        </div>
-                    </label>
-
-                    <label>
-                        <input type="radio" name="semester" value="all" id="sem_all" checked>
-                        <div class="option-card">
-                            <span class="option-indicator"></span>
-                            <span class="option-label">Año completo 2025</span>
-                            <span class="option-badge">Q1 – Q4</span>
-                        </div>
-                    </label>
-
-                </div>
+        {# Period #}
+        <div class="panel">
+            <div class="panel-header">
+                <span class="section-label">Período</span>
             </div>
+            <div class="option-grid">
 
-            <!-- Format selector -->
-            <div class="form-card glass-panel">
-                <h3>Formato de exportación</h3>
-                <div class="option-grid">
-
-                    <label>
-                        <input type="radio" name="fmt" value="csv" id="fmt_csv" checked>
-                        <div class="option-card">
-                            <span class="option-indicator"></span>
-                            <span class="format-icon">📄</span>
-                            <div>
-                                <div class="option-label">CSV — Comma Separated Values</div>
-                                <div
-                                    style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 2px;">
-                                    Compatible con Excel, Google Sheets, Power BI, Python</div>
-                            </div>
+                <label class="option-item">
+                    <input type="radio" name="period" value="Q1_2025" id="per_q1">
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">Q1 — Primer trimestre</div>
+                            <div class="option-sub">Enero · Febrero · Marzo</div>
                         </div>
-                    </label>
+                        <span class="option-badge">2025</span>
+                    </div>
+                </label>
 
-                    <label>
-                        <input type="radio" name="fmt" value="xlsx" id="fmt_xlsx">
-                        <div class="option-card">
-                            <span class="option-indicator"></span>
-                            <span class="format-icon">🗂️</span>
-                            <div>
-                                <div class="option-label">XLSX — Excel Workbook</div>
-                                <div
-                                    style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 2px;">
-                                    Listo para abrir en Microsoft Excel con formato nativo</div>
-                            </div>
+                <label class="option-item">
+                    <input type="radio" name="period" value="Q2_2025" id="per_q2">
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">Q2 — Segundo trimestre</div>
+                            <div class="option-sub">Abril · Mayo · Junio</div>
                         </div>
-                    </label>
+                        <span class="option-badge">2025</span>
+                    </div>
+                </label>
 
-                    <label>
-                        <input type="radio" name="fmt" value="sql" id="fmt_sql">
-                        <div class="option-card">
-                            <span class="option-indicator"></span>
-                            <span class="format-icon">🗄️</span>
-                            <div>
-                                <div class="option-label">SQL — Script de inserción</div>
-                                <div
-                                    style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 2px;">
-                                    CREATE TABLE + INSERT INTO. Compatible con PostgreSQL, MySQL</div>
-                            </div>
+                <label class="option-item">
+                    <input type="radio" name="period" value="Q3_2025" id="per_q3">
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">Q3 — Tercer trimestre</div>
+                            <div class="option-sub">Julio · Agosto · Septiembre</div>
                         </div>
-                    </label>
+                        <span class="option-badge">2025</span>
+                    </div>
+                </label>
 
-                </div>
+                <label class="option-item">
+                    <input type="radio" name="period" value="Q4_2025" id="per_q4">
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">Q4 — Cuarto trimestre</div>
+                            <div class="option-sub">Octubre · Noviembre · Diciembre</div>
+                        </div>
+                        <span class="option-badge">2025</span>
+                    </div>
+                </label>
+
+                <label class="option-item">
+                    <input type="radio" name="period" value="all" id="per_all" checked>
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">Año completo</div>
+                            <div class="option-sub">Q1 · Q2 · Q3 · Q4</div>
+                        </div>
+                        <span class="option-badge">2025</span>
+                    </div>
+                </label>
+
             </div>
-
-            <button type="submit" class="btn btn-primary download-btn" id="download-btn">
-                ↓ &nbsp; Descargar reporte
-            </button>
-
         </div>
 
-        <!-- RIGHT: Preview summary -->
-        <div class="preview-card glass-panel animate-fade-up delay-2">
-            <h3>Resumen del dataset</h3>
+        {# Format #}
+        <div class="panel">
+            <div class="panel-header">
+                <span class="section-label">Formato de exportación</span>
+            </div>
+            <div class="option-grid">
 
-            <div class="preview-stat">
-                <span class="preview-stat-label">Año</span>
-                <span class="preview-stat-value">2025</span>
-            </div>
-            <div class="preview-stat">
-                <span class="preview-stat-label">Total transacciones</span>
-                <span class="preview-stat-value text-accent">{{ "{:,}".format(kpis.total_transacciones) if kpis else '—'
-                    }}</span>
-            </div>
-            <div class="preview-stat">
-                <span class="preview-stat-label">Ingresos totales</span>
-                <span class="preview-stat-value">${{ "{:,.0f}".format(kpis.ingresos_totales) if kpis else '—' }}</span>
-            </div>
-            <div class="preview-stat">
-                <span class="preview-stat-label">Egresos totales</span>
-                <span class="preview-stat-value text-danger">${{ "{:,.0f}".format(kpis.egresos_totales) if kpis else '—'
-                    }}</span>
-            </div>
-            <div class="preview-stat">
-                <span class="preview-stat-label">Balance neto</span>
-                <span class="preview-stat-value">${{ "{:,.0f}".format(kpis.balance_neto) if kpis else '—' }}</span>
-            </div>
-            <div class="preview-stat">
-                <span class="preview-stat-label">Período</span>
-                <span class="preview-stat-value" id="preview-period">Año completo</span>
-            </div>
-            <div class="preview-stat">
-                <span class="preview-stat-label">Formato</span>
-                <span class="preview-stat-value" id="preview-fmt">CSV</span>
-            </div>
+                <label class="option-item">
+                    <input type="radio" name="fmt" value="csv" id="fmt_csv" checked>
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">CSV</div>
+                            <div class="option-sub">Excel · Google Sheets · pandas · Power BI</div>
+                        </div>
+                    </div>
+                </label>
 
-            <hr class="divider">
+                <label class="option-item">
+                    <input type="radio" name="fmt" value="xlsx" id="fmt_xlsx">
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">XLSX</div>
+                            <div class="option-sub">Excel nativo · formato preservado</div>
+                        </div>
+                    </div>
+                </label>
 
-            <p style="font-size: var(--text-xs); color: var(--color-text-secondary); line-height: 1.6;">
-                Los datos exportados provienen de la capa <strong>Silver</strong> del pipeline Medallion,
-                con limpieza, tipado y deduplicación aplicados. Listos para análisis o migración directa.
-            </p>
+                <label class="option-item">
+                    <input type="radio" name="fmt" value="sql" id="fmt_sql">
+                    <div class="option-card">
+                        <span class="option-dot"></span>
+                        <div>
+                            <div class="option-main">SQL</div>
+                            <div class="option-sub">CREATE TABLE + INSERT · PostgreSQL · MySQL</div>
+                        </div>
+                    </div>
+                </label>
+
+            </div>
         </div>
+
+        <button type="submit" class="btn btn-primary btn-download" id="download-btn">
+            Descargar reporte
+        </button>
 
     </div>
+
+    {# ── RIGHT: preview ── #}
+    <div class="preview-panel animate-in delay-2">
+        <div class="panel">
+            <div class="panel-header">
+                <span class="section-label">Resumen</span>
+            </div>
+            <div class="panel-body">
+
+                <div class="stat-row">
+                    <span class="stat-label">Año</span>
+                    <span class="stat-value">2025</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Transacciones</span>
+                    <span class="stat-value" style="color:var(--accent)">
+                        {{ "{:,}".format(kpis.total_transacciones) if kpis else '—' }}
+                    </span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Ingresos</span>
+                    <span class="stat-value">${{ "{:,.0f}".format(kpis.ingresos_totales) if kpis else '—' }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Egresos</span>
+                    <span class="stat-value" style="color:var(--danger)">
+                        ${{ "{:,.0f}".format(kpis.egresos_totales) if kpis else '—' }}
+                    </span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Balance</span>
+                    <span class="stat-value">${{ "{:,.0f}".format(kpis.balance_neto) if kpis else '—' }}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Período</span>
+                    <span class="stat-value" id="preview-period">Año completo</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Formato</span>
+                    <span class="stat-value" id="preview-fmt">CSV</span>
+                </div>
+
+                <hr class="divider">
+                <p class="preview-note">
+                    Capa Silver del pipeline Medallion.
+                    Datos limpios, tipados y deduplicados.
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
 </form>
 
 <script>
     const periodLabels = {
-        S1_2025: "Semestre 1 (Ene–Jun)",
-        S2_2025: "Semestre 2 (Jul–Dic)",
-        all: "Año completo 2025"
+        Q1_2025: "Q1 2025",
+        Q2_2025: "Q2 2025",
+        Q3_2025: "Q3 2025",
+        Q4_2025: "Q4 2025",
+        all: "Año completo"
     };
     const fmtLabels = { csv: "CSV", xlsx: "XLSX", sql: "SQL" };
 
     function updatePreview() {
-        const sem = document.querySelector('input[name="semester"]:checked')?.value ?? "all";
+        const per = document.querySelector('input[name="period"]:checked')?.value ?? "all";
         const fmt = document.querySelector('input[name="fmt"]:checked')?.value ?? "csv";
-        document.getElementById("preview-period").textContent = periodLabels[sem] ?? sem;
+        document.getElementById("preview-period").textContent = periodLabels[per] ?? per;
         document.getElementById("preview-fmt").textContent = fmtLabels[fmt] ?? fmt;
     }
 
-    document.querySelectorAll('input[name="semester"], input[name="fmt"]')
+    document.querySelectorAll('input[name="period"], input[name="fmt"]')
         .forEach(el => el.addEventListener("change", updatePreview));
 
-    // Button feedback on click
     document.getElementById("export-form").addEventListener("submit", () => {
         const btn = document.getElementById("download-btn");
-        btn.textContent = "Preparando descarga…";
-        btn.style.opacity = "0.7";
+        btn.textContent = "Generando...";
+        btn.style.opacity = "0.6";
         setTimeout(() => {
-            btn.textContent = "↓   Descargar reporte";
+            btn.textContent = "Descargar reporte";
             btn.style.opacity = "1";
-        }, 3000);
+        }, 2500);
     });
 
     updatePreview();

@@ -1,16 +1,21 @@
 import io
+import os
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
-from fastapi import FastAPI, Depends, Request, Query
-from fastapi.responses import HTMLResponse, StreamingResponse, Response
+from fastapi import FastAPI, Depends, Request, Query, HTTPException, Response
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from db.session import get_db
 from db.models import KPIs, CategorySummary, MonthlyBalance
+
+# ── CONFIG ───────────────────────────────────────────────────────────────────
+# If SECRET_TOKEN is set in ENV, we require it in URL (?token=...) or Cookie
+SECRET_TOKEN = os.getenv("SECRET_TOKEN")
 
 SILVER_DIR = Path("data/lake/silver")
 
@@ -19,29 +24,27 @@ app = FastAPI(title="DataPlatform — Financial Intel")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-SEMESTER_MAP = {
-    "S1_2025": [1, 2, 3, 4, 5, 6],
-    "S2_2025": [7, 8, 9, 10, 11, 12],
+# Maps period key → list of months to include (None = all)
+PERIOD_MAP = {
+    "Q1_2025": [1, 2, 3],
+    "Q2_2025": [4, 5, 6],
+    "Q3_2025": [7, 8, 9],
+    "Q4_2025": [10, 11, 12],
     "all":     None,
 }
 
-QUARTER_FILES = {
-    1: "transacciones_Q1_2025.parquet",
-    2: "transacciones_Q2_2025.parquet",
-    3: "transacciones_Q3_2025.parquet",
-    4: "transacciones_Q4_2025.parquet",
-}
-
-QUARTER_MONTHS = {1: [1,2,3], 2: [4,5,6], 3: [7,8,9], 4: [10,11,12]}
+QUARTER_FILES = [
+    "transacciones_Q1_2025.parquet",
+    "transacciones_Q2_2025.parquet",
+    "transacciones_Q3_2025.parquet",
+    "transacciones_Q4_2025.parquet",
+]
 
 
-def _load_silver(semester: str) -> pd.DataFrame:
-    """Load Silver Parquet files and filter by semester."""
+def _load_silver(period: str) -> pd.DataFrame:
+    """Load Silver Parquet files and filter by quarter period."""
     frames = []
-    for q, fname in QUARTER_FILES.items():
+    for fname in QUARTER_FILES:
         fpath = SILVER_DIR / fname
         if fpath.exists():
             frames.append(pd.read_parquet(fpath))
@@ -52,7 +55,7 @@ def _load_silver(semester: str) -> pd.DataFrame:
     df = pd.concat(frames, ignore_index=True)
     df["FECHA"] = pd.to_datetime(df["FECHA"], utc=True)
 
-    months = SEMESTER_MAP.get(semester)
+    months = PERIOD_MAP.get(period)
     if months is not None:
         df = df[df["FECHA"].dt.month.isin(months)]
 
@@ -69,7 +72,7 @@ def _load_silver(semester: str) -> pd.DataFrame:
 def _to_sql_dump(df: pd.DataFrame, semester: str) -> str:
     """Generate a SQL file with CREATE TABLE + INSERT statements."""
     period = semester if semester != "all" else "2025_completo"
-    table = f"transacciones_{period}"
+    table = f"transacciones_{period.lower()}"
 
     lines: list[str] = [
         f"-- DataPlatform Export · Período: {period}",
@@ -108,23 +111,46 @@ def _to_sql_dump(df: pd.DataFrame, semester: str) -> str:
     return "\n".join(lines)
 
 
+# ── Auth Helper ──────────────────────────────────────────────────────────────
+
+def verify_access(request: Request):
+    if not SECRET_TOKEN:
+        return True
+    
+    # Check query param or cookie
+    token = request.query_params.get("token") or request.cookies.get("access_token")
+    if token == SECRET_TOKEN:
+        return True
+    
+    raise HTTPException(
+        status_code=403, 
+        detail="Unauthorized. Access token required for this demo."
+    )
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-async def read_dashboard(request: Request, db: Session = Depends(get_db)):
+async def read_dashboard(request: Request, db: Session = Depends(get_db), _ = Depends(verify_access)):
     kpis       = db.query(KPIs).first()
     categories = db.query(CategorySummary).order_by(CategorySummary.total_egresos.desc()).all()
     monthly    = db.query(MonthlyBalance).order_by(MonthlyBalance.mes).all()
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="dashboard.html",
         context={"kpis": kpis, "categories": categories, "monthly": monthly},
     )
 
+    # Set cookie if token is in URL to 'remember' the session
+    token = request.query_params.get("token")
+    if token == SECRET_TOKEN:
+        response.set_cookie(key="access_token", value=token, httponly=True)
+    
+    return response
+
 
 @app.get("/export", response_class=HTMLResponse)
-async def export_page(request: Request, db: Session = Depends(get_db)):
+async def export_page(request: Request, db: Session = Depends(get_db), _ = Depends(verify_access)):
     kpis = db.query(KPIs).first()
     return templates.TemplateResponse(
         request=request,
@@ -135,12 +161,13 @@ async def export_page(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/export/download")
 async def export_download(
-    semester: str = Query("all",  enum=["S1_2025", "S2_2025", "all"]),
-    fmt:      str = Query("csv",  enum=["csv", "xlsx", "sql"]),
+    period: str = Query("all", enum=["Q1_2025", "Q2_2025", "Q3_2025", "Q4_2025", "all"]),
+    fmt:    str = Query("csv", enum=["csv", "xlsx", "sql"]),
+    _ = Depends(verify_access)
 ):
-    df = _load_silver(semester)
-    period = semester if semester != "all" else "2025_completo"
-    fname_base = f"reporte_{period}"
+    df = _load_silver(period)
+    label = period if period != "all" else "2025_completo"
+    fname_base = f"reporte_{label}"
 
     # ── CSV ─────────────────────────────────────────────────────────────────
     if fmt == "csv":
@@ -166,7 +193,7 @@ async def export_download(
 
     # ── SQL ──────────────────────────────────────────────────────────────────
     if fmt == "sql":
-        sql_content = _to_sql_dump(df, semester)
+        sql_content = _to_sql_dump(df, period)
         return StreamingResponse(
             iter([sql_content]),
             media_type="text/plain; charset=utf-8",

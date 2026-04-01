@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_URL=sqlite:///./data/warehouse.db
+      - SECRET_TOKEN=PRODIGIUM_DEMO_2025  # <-- Change this for your demo
+    volumes:
+      - ./data:/app/data
+    restart: always
+
+# Note: Before running, ensure you have run the pipeline at least once
+# to generate the .parquet and .db files in the /data directory.
